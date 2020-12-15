@@ -45,12 +45,28 @@ void detKeypoints1()
     string windowName = "Shi-Tomasi Results";
     cv::namedWindow(windowName, 1);
     imshow(windowName, visImage);
+    cv::waitKey(0);
 
     // TODO: use the OpenCV library to add the FAST detector
     // in addition to the already implemented Shi-Tomasi 
     // detector and compare both algorithms with regard to 
     // (a) number of keypoints, (b) distribution of 
     // keypoints over the image and (c) processing speed.
+    auto fast = cv::FastFeatureDetector::create(50, true, cv::FastFeatureDetector::TYPE_9_16);
+    vector<cv::KeyPoint> kptFast;
+
+    t = (double)cv::getTickCount();
+    fast->detect(imgGray, kptFast);
+    t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+    cout << "Fast with n= " << kptFast.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+
+    // visualize results
+    cv::Mat visImage2 = img.clone();
+    cv::drawKeypoints(img, kptFast, visImage2, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    string windowName2 = "Fast Results";
+    cv::namedWindow(windowName2, 2);
+    imshow(windowName2, visImage2);
+    cv::waitKey(0);
 }
 
 int main()
