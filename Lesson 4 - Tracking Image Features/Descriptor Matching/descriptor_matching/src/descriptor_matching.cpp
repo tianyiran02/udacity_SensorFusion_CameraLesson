@@ -14,12 +14,11 @@ void matchDescriptors(cv::Mat &imgSource, cv::Mat &imgRef, vector<cv::KeyPoint> 
 {
 
     // configure matcher
-    bool crossCheck = false;
+    bool crossCheck = true;
     cv::Ptr<cv::DescriptorMatcher> matcher;
 
     if (matcherType.compare("MAT_BF") == 0)
     {
-
         int normType = descriptorType.compare("DES_BINARY") == 0 ? cv::NORM_HAMMING : cv::NORM_L2;
         matcher = cv::BFMatcher::create(normType, crossCheck);
         cout << "BF matching cross-check=" << crossCheck;
@@ -32,7 +31,7 @@ void matchDescriptors(cv::Mat &imgSource, cv::Mat &imgRef, vector<cv::KeyPoint> 
             descRef.convertTo(descRef, CV_32F);
         }
 
-        //... TODO : implement FLANN matching
+        matcher = cv::FlannBasedMatcher::create();
         cout << "FLANN matching";
     }
 
@@ -49,8 +48,24 @@ void matchDescriptors(cv::Mat &imgSource, cv::Mat &imgRef, vector<cv::KeyPoint> 
     { // k nearest neighbors (k=2)
 
         // TODO : implement k-nearest-neighbor matching
+        vector<vector<cv::DMatch>> matchResult;
+        double t = (double)cv::getTickCount();
+        matcher->knnMatch(descSource, descRef, matchResult, 2); // finds the 2 best matches
 
         // TODO : filter matches using descriptor distance ratio test
+        for (int i = 0; i < matchResult.size(); i++)
+        {
+            float dis0 = matchResult.at(i).at(0).distance;
+            float dis1 = matchResult.at(i).at(1).distance;
+
+            if ((dis0/ dis1) < 0.8)
+            {
+                matches.push_back(matchResult.at(i).at(0));
+            }
+        }
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+
+        cout << " (KNN) with n=" << matches.size() << " matches in " << 1000 * t / 1.0 << " ms" << endl;
     }
 
     // visualize results
@@ -59,8 +74,10 @@ void matchDescriptors(cv::Mat &imgSource, cv::Mat &imgRef, vector<cv::KeyPoint> 
                     matchImg, cv::Scalar::all(-1), cv::Scalar::all(-1), vector<char>(), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
     string windowName = "Matching keypoints between two camera images (best 50)";
-    cv::namedWindow(windowName, 7);
+    cv::namedWindow(windowName, cv::WINDOW_NORMAL);
+    cv::resizeWindow(windowName, 960, 540);
     cv::imshow(windowName, matchImg);
+
     cv::waitKey(0);
 }
 
@@ -70,16 +87,16 @@ int main()
     cv::Mat imgRef = cv::imread("../images/img2gray.png");
 
     vector<cv::KeyPoint> kptsSource, kptsRef; 
-    readKeypoints("../dat/C35A5_KptsSource_BRISK_large.dat", kptsSource);
-    readKeypoints("../dat/C35A5_KptsRef_BRISK_large.dat", kptsRef);
+    readKeypoints("../dat/C35A5_KptsSource_SIFT.dat", kptsSource);
+    readKeypoints("../dat/C35A5_KptsRef_SIFT.dat", kptsRef);
 
     cv::Mat descSource, descRef; 
-    readDescriptors("../dat/C35A5_DescSource_BRISK_large.dat", descSource);
-    readDescriptors("../dat/C35A5_DescRef_BRISK_large.dat", descRef);
+    readDescriptors("../dat/C35A5_DescSource_SIFT.dat", descSource);
+    readDescriptors("../dat/C35A5_DescRef_SIFT.dat", descRef);
 
     vector<cv::DMatch> matches;
-    string matcherType = "MAT_BF"; 
-    string descriptorType = "DES_BINARY"; 
-    string selectorType = "SEL_NN"; 
+    string matcherType = "MAT_FLANN"; 
+    string descriptorType = "DES_L2"; 
+    string selectorType = "SEL_KNN"; 
     matchDescriptors(imgSource, imgRef, kptsSource, kptsRef, descSource, descRef, matches, descriptorType, matcherType, selectorType);
 }
