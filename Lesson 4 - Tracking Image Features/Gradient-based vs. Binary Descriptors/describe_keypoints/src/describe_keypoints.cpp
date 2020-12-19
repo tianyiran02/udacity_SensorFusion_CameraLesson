@@ -45,6 +45,30 @@ void descKeypoints1()
     // with regard to processing speed and the number and 
     // visual appearance of keypoints.
 
+    /* SIFT detector */
+    cv::Ptr<cv::FeatureDetector> siftdetector = cv::SIFT::create();
+    vector<cv::KeyPoint> kptsSIFT;
+
+    t = (double)cv::getTickCount();
+    siftdetector->detect(imgGray, kptsSIFT);
+    t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+    cout << "SIFT detector with n= " << kptsSIFT.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+
+    cv::Ptr<cv::DescriptorExtractor> siftdescriptor = cv::SIFT::create();
+    cv::Mat descSIFT;
+    t = (double)cv::getTickCount();
+    siftdescriptor->compute(imgGray, kptsSIFT, descSIFT);
+    t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+    cout << "SIFT descriptor in " << 1000 * t / 1.0 << " ms" << endl;
+
+    // visualize results
+    cv::Mat visSIFTImage = img.clone();
+    cv::drawKeypoints(img, kptsSIFT, visSIFTImage, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    string windowNameSIFT = "SIFT Results";
+    cv::namedWindow(windowNameSIFT, 2);
+    imshow(windowNameSIFT, visSIFTImage);
+    cv::waitKey(0);
+
 }
 
 int main()
