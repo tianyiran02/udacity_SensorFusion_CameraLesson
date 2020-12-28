@@ -68,6 +68,35 @@ void showLidarTopview(std::vector<LidarPoint> &lidarPoints, cv::Size worldSize, 
     cv::waitKey(0); // wait for key to be pressed
 }
 
+bool checkMultiBox(std::vector<BoundingBox> &boundingBox, cv::Point &pt)
+{
+    bool rtn = false;
+    int hitCnt = 0;
+    double shrinkFactor = 0.10;
+
+    for(auto it = boundingBox.begin(); it != boundingBox.end(); it ++)
+    {
+        cv::Rect smallerBox;
+
+        smallerBox.x = (*it).roi.x + shrinkFactor * (*it).roi.width / 2.0;
+        smallerBox.y = (*it).roi.y + shrinkFactor * (*it).roi.height / 2.0;
+        smallerBox.width = (*it).roi.width * (1 - shrinkFactor);
+        smallerBox.height = (*it).roi.height * (1 - shrinkFactor);
+    
+        if(smallerBox.contains(pt))
+        {
+            hitCnt ++;
+        }
+    }
+
+    if (hitCnt >= 2)
+    {
+        rtn = true;
+    }
+
+    return (rtn);
+}
+
 // TODO - Add your code inside this function
 void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints)
 {
@@ -97,6 +126,26 @@ void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<Li
 
         double shrinkFactor = 0.10;
         vector<vector<BoundingBox>::iterator> enclosingBoxes; // pointers to all bounding boxes which enclose the current Lidar point
+        // for (vector<BoundingBox>::iterator it2 = boundingBoxes.begin(); it2 != boundingBoxes.end(); ++it2)
+        // {
+        //     // shrink current bounding box slightly to avoid having too many outlier points around the edges
+        //     cv::Rect smallerBox;
+        //     smallerBox.x = (*it2).roi.x + shrinkFactor * (*it2).roi.width / 2.0;
+        //     smallerBox.y = (*it2).roi.y + shrinkFactor * (*it2).roi.height / 2.0;
+        //     smallerBox.width = (*it2).roi.width * (1 - shrinkFactor);
+        //     smallerBox.height = (*it2).roi.height * (1 - shrinkFactor);
+
+        //     // check wether point is within current bounding box
+        //     if (smallerBox.contains(pt))
+        //     {
+        //         it2->lidarPoints.push_back(*it1);
+        //         lidarPoints.erase(it1);
+        //         it1--;
+        //         break;
+        //     }
+        // } // eof loop over all bounding boxes
+        
+        // TODO - check wether point has been enclosed by one or by multiple boxes. 
         for (vector<BoundingBox>::iterator it2 = boundingBoxes.begin(); it2 != boundingBoxes.end(); ++it2)
         {
             // shrink current bounding box slightly to avoid having too many outlier points around the edges
@@ -109,14 +158,16 @@ void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<Li
             // check wether point is within current bounding box
             if (smallerBox.contains(pt))
             {
-                it2->lidarPoints.push_back(*it1);
+                if (checkMultiBox(boundingBoxes, pt) != true)
+                {
+                    it2->lidarPoints.push_back(*it1);
+                }
+
                 lidarPoints.erase(it1);
                 it1--;
                 break;
             }
         } // eof loop over all bounding boxes
-        
-      // TODO - check wether point has been enclosed by one or by multiple boxes. 
       // Accordingly, add Lidar point to bounding box
 
     } // eof loop over all Lidar points
